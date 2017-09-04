@@ -11,7 +11,8 @@ namespace NServiceBusBigSaga
 {
     public class NotificationSaga : Saga<NotificationSagaData>,
         IAmStartedByMessages<NotifyUser>,
-        IHandleMessages<FinishNotification>
+        IHandleMessages<FinishNotification>,
+        IHandleMessages<MarkSagaAsCompleted>
     {
         private static readonly ILog Log = LogManager.GetLogger<NotificationSaga>();
         protected override void ConfigureHowToFindSaga(SagaPropertyMapper<NotificationSagaData> mapper)
@@ -40,7 +41,10 @@ namespace NServiceBusBigSaga
                 await context.SendLocal(messageToSend).ConfigureAwait(false);
                 //await context.Send("Random", messageToSend).ConfigureAwait(false);
             }
-            MarkAsComplete();
+
+            // MarkAsComplete();
+            // instead make it a command
+            await context.SendLocal(new MarkSagaAsCompleted()).ConfigureAwait(false);
         }
 
         private List<int> _users;
@@ -61,6 +65,14 @@ namespace NServiceBusBigSaga
                 Data.UsersFlat = JsonConvert.SerializeObject(value);
                 _users = value;
             }
+        }
+
+        public Task Handle(MarkSagaAsCompleted message, IMessageHandlerContext context)
+        {
+            Log.Info("Completing saga");
+            MarkAsComplete();
+
+            return Task.CompletedTask;
         }
     }
 }
